@@ -1,5 +1,5 @@
 
-Hey, I’m F.A.
+## Hey, I’m F.A.
 A self-taught coder and electronics enthusiast who loves building things from scratch. Here’s my story:
 
 How It Started
