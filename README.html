@@ -1,1 +1,128 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Ultimate HTML Feature Test</title>
+    <style>
+        body { font-family: sans-serif; line-height: 1.6; padding: 20px; max-width: 800px; margin: auto; }
+        section { border-bottom: 2px solid #ccc; padding-bottom: 20px; margin-bottom: 20px; }
+        code { background: #eee; padding: 2px 4px; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>HTML5 Feature Test Page</h1>
+        <nav>
+            <ul>
+                <li><a href="#text">Text</a></li>
+                <li><a href="#forms">Forms</a></li>
+                <li><a href="#media">Media</a></li>
+                <li><a href="#tables">Tables</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- 1. TEXT ELEMENTS -->
+    <section id="text">
+        <h2>1. Text Elements</h2>
+        <h1>Heading 1</h1>
+        <p>This is a standard paragraph with <strong>bold text</strong>, <em>italics</em>, <mark>highlighted text</mark>, and a <a href="#">hyperlink</a>.</p>
+        <blockquote>"This is a blockquote for citations."</blockquote>
+        <pre><code>// This is a code block
+function helloWorld() {
+  console.log("Hello!");
+}</code></pre>
+        <p>Mathematical formula: <var>E</var> = <var>m</var><var>c</var><sup>2</sup> and H<sub>2</sub>O.</p>
+    </section>
+
+    <!-- 2. INTERACTIVE & SEMANTIC -->
+    <section id="semantic">
+        <h2>2. Interactive & Semantic</h2>
+        <details>
+            <summary>Click to expand (Accordion)</summary>
+            <p>This is hidden content inside a <code>&lt;details&gt;</code> tag.</p>
+        </details>
+        <p>Progress bar: <progress value="70" max="100">70%</progress></p>
+        <p>Meter (Gauge): <meter value="0.6">60%</meter></p>
+    </section>
+
+    <!-- 3. FORMS & INPUTS -->
+    <section id="forms">
+        <h2>3. Forms & Inputs</h2>
+        <form>
+            <fieldset>
+                <legend>Registration Form</legend>
+                <p><label>Text: <input type="text" placeholder="Your name"></label></p>
+                <p><label>Email: <input type="email" placeholder="test@example.com"></label></p>
+                <p><label>Password: <input type="password"></label></p>
+                <p><label>Date: <input type="date"></label></p>
+                <p><label>Color Picker: <input type="color"></label></p>
+                <p><label>Range: <input type="range"></label></p>
+                <p>
+                    <label><input type="radio" name="opt" value="1"> Option A</label>
+                    <label><input type="radio" name="opt" value="2"> Option B</label>
+                </p>
+                <p>
+                    <label><input type="checkbox"> Newsletter?</label>
+                </p>
+                <p>
+                    <select>
+                        <option>Dropdown Item 1</option>
+                        <option>Dropdown Item 2</option>
+                    </select>
+                </p>
+                <button type="submit">Submit Button</button>
+            </fieldset>
+        </form>
+    </section>
+
+    <!-- 4. TABLES -->
+    <section id="tables">
+        <h2>4. Tables</h2>
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Price</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Web Design</td>
+                    <td>$500</td>
+                    <td>In Progress</td>
+                </tr>
+                <tr>
+                    <td>SEO</td>
+                    <td>$300</td>
+                    <td>Completed</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <!-- 5. MEDIA -->
+    <section id="media">
+        <h2>5. Media Elements</h2>
+        <p>Image:</p>
+        <img src="https://placeholder.com" alt="Placeholder Image">
+        
+        <p>Audio (Native):</p>
+        <audio controls src=""></audio>
+
+        <p>Video (Native):</p>
+        <video controls width="250">
+            <source src="" type="video/mp4">
+        </video>
+    </section>
+
+    <footer>
+        <p>&copy; 2024 HTML Feature Test Environment</p>
+    </footer>
+
+</body>
+</html>
