@@ -1,128 +1,1240 @@
-
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Ultimate HTML Feature Test</title>
-    <style>
-        body { font-family: sans-serif; line-height: 1.6; padding: 20px; max-width: 800px; margin: auto; }
-        section { border-bottom: 2px solid #ccc; padding-bottom: 20px; margin-bottom: 20px; }
-        code { background: #eee; padding: 2px 4px; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Landslide Detection Telemetry Dashboard</title>
+
+  <!-- Premium Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap"
+    rel="stylesheet">
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Paho MQTT Client CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+
+  <style>
+    :root {
+      --bg-dark: #080c14;
+      --bg-card: rgba(26, 38, 65, 0.65);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+
+      /* Color themes */
+      --color-secure: #10b981;
+      --color-alert: #ef4444;
+      --color-alert-glow: rgba(239, 68, 68, 0.4);
+      --color-primary: #3b82f6;
+      --color-primary-glow: rgba(59, 130, 246, 0.3);
+      --color-yellow: #f59e0b;
+
+      --font-outfit: 'Outfit', sans-serif;
+      --font-inter: 'Inter', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      background-image:
+        radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.08) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.06) 0px, transparent 50%),
+        radial-gradient(at 50% 50%, rgba(239, 68, 68, 0.04) 0px, transparent 60%);
+      background-attachment: fixed;
+      font-family: var(--font-inter);
+      color: var(--text-main);
+      min-height: 100vh;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Glassmorphism utility */
+    .glass-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 24px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+    }
+
+    .glass-card:hover {
+      border-color: rgba(255, 255, 255, 0.15);
+      box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.4);
+    }
+
+    /* Container */
+    .container {
+      max-width: 1400px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 24px;
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* Header Styling */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 24px;
+      margin-bottom: 8px;
+    }
+
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .logo-pulse {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--color-secure);
+      box-shadow: 0 0 12px var(--color-secure);
+      animation: pulse-green 2s infinite;
+    }
+
+    .logo-pulse.alert-state {
+      background: var(--color-alert);
+      box-shadow: 0 0 16px var(--color-alert);
+      animation: pulse-red 0.8s infinite;
+    }
+
+    header h1 {
+      font-family: var(--font-outfit);
+      font-size: 1.8rem;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      background: linear-gradient(135deg, #ffffff 30%, #a5b4fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .connection-status {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-color);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ef4444;
+    }
+
+    .status-dot.connected {
+      background: var(--color-secure);
+      box-shadow: 0 0 8px var(--color-secure);
+    }
+
+    .status-dot.simulating {
+      background: var(--color-yellow);
+      box-shadow: 0 0 8px var(--color-yellow);
+    }
+
+    /* Metrics Grid Layout */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+    }
+
+    .metric-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .metric-info h3 {
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .metric-value {
+      font-family: var(--font-outfit);
+      font-size: 2.2rem;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+
+    .metric-subtitle {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+
+    .metric-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-color);
+    }
+
+    /* Color States for Metrics */
+    .state-secure {
+      border-left: 4px solid var(--color-secure);
+    }
+
+    .state-alert {
+      border-left: 4px solid var(--color-alert);
+      animation: alert-border-pulse 1.5s infinite;
+    }
+
+    .text-secure {
+      color: var(--color-secure);
+    }
+
+    .text-alert {
+      color: var(--color-alert);
+    }
+
+    /* Progress bar in Card */
+    .progress-track {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 3px;
+      margin-top: 12px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--color-primary);
+      border-radius: 3px;
+      transition: width 0.3s ease;
+    }
+
+    .progress-fill.warning {
+      background: var(--color-alert);
+    }
+
+    /* Main Dashboard Layout split */
+    .dashboard-split {
+      display: grid;
+      grid-template-columns: 2.5fr 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 1024px) {
+      .dashboard-split {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Chart Card */
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .chart-header h2 {
+      font-family: var(--font-outfit);
+      font-size: 1.25rem;
+      font-weight: 700;
+    }
+
+    .chart-legend {
+      display: flex;
+      gap: 16px;
+      font-size: 0.8rem;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+    }
+
+    .chart-container {
+      position: relative;
+      height: 380px;
+      width: 100%;
+    }
+
+    /* Right column panels (Control & Logs) */
+    .sidebar-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .section-title {
+      font-family: var(--font-outfit);
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* MQTT Configuration Form */
+    .form-group {
+      margin-bottom: 12px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .form-group input {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: var(--text-main);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .form-group input:focus {
+      border-color: var(--color-primary);
+    }
+
+    .btn {
+      width: 100%;
+      background: var(--color-primary);
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      padding: 12px;
+      font-family: var(--font-outfit);
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn:hover {
+      background: #2563eb;
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Simulation Control Board */
+    .sim-panel {
+      border: 1px dashed rgba(245, 158, 11, 0.3);
+      position: relative;
+    }
+
+    .sim-panel.active {
+      border-color: var(--color-yellow);
+      background: rgba(245, 158, 11, 0.02);
+    }
+
+    .sim-tag {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      font-size: 0.65rem;
+      font-weight: 800;
+      background: var(--color-yellow);
+      color: #000000;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+
+    .slider-container {
+      margin: 16px 0;
+    }
+
+    .slider-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      margin-bottom: 6px;
+    }
+
+    .slider {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+      outline: none;
+    }
+
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--color-yellow);
+      cursor: pointer;
+      box-shadow: 0 0 8px var(--color-yellow);
+      transition: transform 0.1s;
+    }
+
+    .slider::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    .sim-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    /* Console logs */
+    .console-log {
+      height: 250px;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 12px;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      scroll-behavior: smooth;
+    }
+
+    .log-item {
+      line-height: 1.4;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+      padding-bottom: 4px;
+    }
+
+    .log-time {
+      color: var(--text-muted);
+    }
+
+    .log-info {
+      color: #60a5fa;
+    }
+
+    .log-warn {
+      color: var(--color-yellow);
+    }
+
+    .log-alert {
+      color: var(--color-alert);
+      font-weight: 600;
+    }
+
+    .log-success {
+      color: var(--color-secure);
+    }
+
+    /* Danger Full Screen Threat overlay */
+    .threat-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 999;
+      box-shadow: inset 0 0 0px var(--color-alert);
+      transition: box-shadow 0.5s;
+    }
+
+    .threat-overlay.active {
+      box-shadow: inset 0 0 80px rgba(239, 68, 68, 0.7);
+      animation: alarm-pulse 1s infinite alternate;
+    }
+
+    /* Animations */
+    @keyframes pulse-green {
+      0% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+      }
+
+      70% {
+        box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+      }
+
+      100% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+      }
+    }
+
+    @keyframes pulse-red {
+      0% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.8);
+      }
+
+      70% {
+        box-shadow: 0 0 0 14px rgba(239, 68, 68, 0);
+      }
+
+      100% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+      }
+    }
+
+    @keyframes alarm-pulse {
+      0% {
+        box-shadow: inset 0 0 40px rgba(239, 68, 68, 0.3);
+      }
+
+      100% {
+        box-shadow: inset 0 0 100px rgba(239, 68, 68, 0.85);
+      }
+    }
+
+    @keyframes alert-border-pulse {
+
+      0%,
+      100% {
+        border-left-color: var(--color-alert);
+      }
+
+      50% {
+        border-left-color: rgba(239, 68, 68, 0.2);
+      }
+    }
+
+    /* Footer styling */
+    footer {
+      text-align: center;
+      padding: 32px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: auto;
+      border-top: 1px solid var(--border-color);
+    }
+
+    footer a {
+      color: var(--color-primary);
+      text-decoration: none;
+    }
+  </style>
 </head>
+
 <body>
 
-    <header>
-        <h1>HTML5 Feature Test Page</h1>
-        <nav>
-            <ul>
-                <li><a href="#text">Text</a></li>
-                <li><a href="#forms">Forms</a></li>
-                <li><a href="#media">Media</a></li>
-                <li><a href="#tables">Tables</a></li>
-            </ul>
-        </nav>
+  <!-- Full screen critical danger overlay -->
+  <div id="threatOverlay" class="threat-overlay"></div>
+
+  <div class="container">
+    <!-- Header -->
+    <header class="glass-card">
+      <div class="logo-container">
+        <div id="logoPulse" class="logo-pulse"></div>
+        <div>
+          <h1>LANDSLIDE TELEMETRY DASHBOARD</h1>
+          <p
+            style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px;">
+            Tech Showcase Edition</p>
+        </div>
+      </div>
+
+      <div class="connection-status">
+        <div id="statusDot" class="status-dot"></div>
+        <span id="statusText">DISCONNECTED</span>
+      </div>
     </header>
 
-    <!-- 1. TEXT ELEMENTS -->
-    <section id="text">
-        <h2>1. Text Elements</h2>
-        <h1>Heading 1</h1>
-        <p>This is a standard paragraph with <strong>bold text</strong>, <em>italics</em>, <mark>highlighted text</mark>, and a <a href="#">hyperlink</a>.</p>
-        <blockquote>"This is a blockquote for citations."</blockquote>
-        <pre><code>// This is a code block
-function helloWorld() {
-  console.log("Hello!");
-}</code></pre>
-        <p>Mathematical formula: <var>E</var> = <var>m</var><var>c</var><sup>2</sup> and H<sub>2</sub>O.</p>
-    </section>
+    <!-- Metrics Grid -->
+    <div class="metrics-grid">
+      <!-- System Alert Status -->
+      <div id="metricStatusCard" class="glass-card metric-card state-secure">
+        <div class="metric-info">
+          <h3>System Status</h3>
+          <div id="metricStatusVal" class="metric-value text-secure" style="font-size: 1.8rem; font-weight: 800;">SYSTEM
+            SECURE</div>
+          <div id="metricStatusSub" class="metric-subtitle">Monitoring active baseline</div>
+        </div>
+        <div class="metric-icon">
+          <svg id="statusIcon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" class="text-secure">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+        </div>
+      </div>
 
-    <!-- 2. INTERACTIVE & SEMANTIC -->
-    <section id="semantic">
-        <h2>2. Interactive & Semantic</h2>
-        <details>
-            <summary>Click to expand (Accordion)</summary>
-            <p>This is hidden content inside a <code>&lt;details&gt;</code> tag.</p>
-        </details>
-        <p>Progress bar: <progress value="70" max="100">70%</progress></p>
-        <p>Meter (Gauge): <meter value="0.6">60%</meter></p>
-    </section>
+      <!-- Current Z-Axis Acceleration -->
+      <div class="glass-card metric-card">
+        <div class="metric-info">
+          <h3>Vertical Acceleration</h3>
+          <div id="metricZVal" class="metric-value">9.8066 <span
+              style="font-size: 1.1rem; color: var(--text-muted);">m/s²</span></div>
+          <div id="metricBaselineSub" class="metric-subtitle">Baseline: 9.8066 m/s²</div>
+        </div>
+        <div class="metric-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            class="text-secure">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+          </svg>
+        </div>
+      </div>
 
-    <!-- 3. FORMS & INPUTS -->
-    <section id="forms">
-        <h2>3. Forms & Inputs</h2>
-        <form>
-            <fieldset>
-                <legend>Registration Form</legend>
-                <p><label>Text: <input type="text" placeholder="Your name"></label></p>
-                <p><label>Email: <input type="email" placeholder="test@example.com"></label></p>
-                <p><label>Password: <input type="password"></label></p>
-                <p><label>Date: <input type="date"></label></p>
-                <p><label>Color Picker: <input type="color"></label></p>
-                <p><label>Range: <input type="range"></label></p>
-                <p>
-                    <label><input type="radio" name="opt" value="1"> Option A</label>
-                    <label><input type="radio" name="opt" value="2"> Option B</label>
-                </p>
-                <p>
-                    <label><input type="checkbox"> Newsletter?</label>
-                </p>
-                <p>
-                    <select>
-                        <option>Dropdown Item 1</option>
-                        <option>Dropdown Item 2</option>
-                    </select>
-                </p>
-                <button type="submit">Submit Button</button>
-            </fieldset>
-        </form>
-    </section>
+      <!-- Displacement / Shift magnitude -->
+      <div class="glass-card metric-card">
+        <div class="metric-info" style="width: 100%;">
+          <h3>Current Movement</h3>
+          <div id="metricDiffVal" class="metric-value">0.0000 <span
+              style="font-size: 1.1rem; color: var(--text-muted);">m/s²</span></div>
+          <div class="metric-subtitle" id="metricDiffSub">Threshold: 0.2500 m/s²</div>
+          <div class="progress-track">
+            <div id="metricProgressBar" class="progress-fill"></div>
+          </div>
+        </div>
+      </div>
+    </div>
 
-    <!-- 4. TABLES -->
-    <section id="tables">
-        <h2>4. Tables</h2>
-        <table border="1">
-            <thead>
-                <tr>
-                    <th>Item</th>
-                    <th>Price</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>Web Design</td>
-                    <td>$500</td>
-                    <td>In Progress</td>
-                </tr>
-                <tr>
-                    <td>SEO</td>
-                    <td>$300</td>
-                    <td>Completed</td>
-                </tr>
-            </tbody>
-        </table>
-    </section>
+    <!-- Main Grid Split -->
+    <div class="dashboard-split">
 
-    <!-- 5. MEDIA -->
-    <section id="media">
-        <h2>5. Media Elements</h2>
-        <p>Image:</p>
-        <img src="https://placeholder.com" alt="Placeholder Image">
-        
-        <p>Audio (Native):</p>
-        <audio controls src=""></audio>
+      <!-- Graph Telemetry Panel -->
+      <div class="glass-card">
+        <div class="chart-header">
+          <h2>Real-Time Telemetry Graph</h2>
+          <div class="chart-legend">
+            <div class="legend-item">
+              <div class="legend-color" style="background: rgba(59, 130, 246, 1);"></div>
+              <span>Vertical Acceleration (Z)</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color" style="background: rgba(16, 185, 129, 0.8); height: 2px;"></div>
+              <span>Baseline Z</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color" style="background: rgba(239, 68, 68, 0.6); height: 2px;"></div>
+              <span>Landslide Danger Threshold</span>
+            </div>
+          </div>
+        </div>
 
-        <p>Video (Native):</p>
-        <video controls width="250">
-            <source src="" type="video/mp4">
-        </video>
-    </section>
+        <div class="chart-container">
+          <canvas id="telemetryChart"></canvas>
+        </div>
+      </div>
 
+      <!-- Controls and Logs Panels -->
+      <div class="sidebar-panel">
+
+        <!-- Simulation Control Board -->
+        <div id="simPanel" class="glass-card sim-panel">
+          <div class="sim-tag">Simulator Mode</div>
+          <h2 class="section-title">Showcase Suite</h2>
+
+          <p style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 12px;">
+            No hardware? Toggle Simulator Mode to test full alerts, telemetry updates, and dynamic auto-recalibration
+            sequences.
+          </p>
+
+          <button id="toggleSimBtn" class="btn btn-secondary">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Activate Simulator
+          </button>
+
+          <div id="simControls" style="display: none; margin-top: 16px;">
+            <div class="slider-container">
+              <div class="slider-label">
+                <span>Z-Axis Acceleration</span>
+                <span id="sliderVal"
+                  style="font-family: var(--font-mono); font-weight: bold; color: var(--color-yellow);">9.81 m/s²</span>
+              </div>
+              <input type="range" min="5" max="15" step="0.01" value="9.81" class="slider" id="zSlider">
+            </div>
+
+            <div class="sim-grid">
+              <button id="simLandslideBtn" class="btn" style="background: var(--color-alert);">
+                Trigger Slide
+              </button>
+              <button id="simSettleBtn" class="btn btn-secondary">
+                Auto-Settle
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Connection Settings -->
+        <div class="glass-card">
+          <h2 class="section-title">MQTT Settings</h2>
+
+          <div class="form-group">
+            <label for="mqttHost">Broker WebSockets URL</label>
+            <input type="text" id="mqttHost" value="broker.hivemq.com">
+          </div>
+
+          <div class="form-group">
+            <label for="mqttPort">WebSockets Port</label>
+            <input type="text" id="mqttPort" value="8000">
+          </div>
+
+          <div class="form-group">
+            <label for="mqttTopic">MQTT Topic</label>
+            <input type="text" id="mqttTopic" value="LandslideAlertFatimah">
+          </div>
+
+          <button id="connectMqttBtn" class="btn">
+            Connect Client
+          </button>
+        </div>
+
+        <!-- System Alerts History Console -->
+        <div class="glass-card" style="flex-grow: 1;">
+          <h2 class="section-title">System Alert History</h2>
+          <div class="console-log" id="consoleLog">
+            <div class="log-item">
+              <span class="log-time">[System Init]</span> <span class="log-info">Dashboard initialized. Waiting for
+                connection...</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Footer -->
     <footer>
-        <p>&copy; 2024 HTML Feature Test Environment</p>
+      Landslide Detection System Dashboard - Built for Tech Showcase. Uses Web Audio Synthesis & Live MQTT Telemetry.
     </footer>
+  </div>
 
+  <script>
+    // =========================================================================
+    // STATE VARIABLES
+    // =========================================================================
+    let currentZ = 9.8066;
+    let baselineZ = 9.8066;
+    let diffZ = 0;
+    const landslideThreshold = 0.25;
+
+    // Stability Auto-recalibration variables (mirroring C++ ESP32 logic)
+    const stabilityThreshold = 0.1;
+    const stabilityDuration = 3000; // 3 seconds
+    let stableCandidateZ = 9.8066;
+    let candidateStartTime = 0;
+    let isStable = true;
+
+    // Simulation variables
+    let isSimulating = false;
+    let simInterval = null;
+    let autoStabilizeTimer = null;
+
+    // Alert Sound Synthesis Context
+    let audioCtx = null;
+    let alarmInterval = null;
+    let isAlerting = false;
+
+    // MQTT Client
+    let client = null;
+
+    // =========================================================================
+    // CHART CONFIGURATION
+    // =========================================================================
+    const ctx = document.getElementById('telemetryChart').getContext('2d');
+
+    // Generate initial flat dataset
+    const maxDataPoints = 30;
+    const timeLabels = Array.from({ length: maxDataPoints }, (_, i) => '');
+    const zData = Array.from({ length: maxDataPoints }, () => 9.8066);
+    const baselineData = Array.from({ length: maxDataPoints }, () => 9.8066);
+    const upperThresholdData = Array.from({ length: maxDataPoints }, () => 9.8066 + landslideThreshold);
+    const lowerThresholdData = Array.from({ length: maxDataPoints }, () => 9.8066 - landslideThreshold);
+
+    const telemetryChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: timeLabels,
+        datasets: [
+          {
+            label: 'Vertical Acceleration (Z)',
+            data: zData,
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59, 130, 246, 0.05)',
+            borderWidth: 3,
+            pointRadius: 0,
+            tension: 0.3,
+            fill: true
+          },
+          {
+            label: 'Baseline Z',
+            data: baselineData,
+            borderColor: '#10b981',
+            borderWidth: 1.5,
+            borderDash: [5, 5],
+            pointRadius: 0,
+            fill: false
+          },
+          {
+            label: 'Upper Warning Limit',
+            data: upperThresholdData,
+            borderColor: 'rgba(239, 68, 68, 0.6)',
+            borderWidth: 1.5,
+            borderDash: [3, 3],
+            pointRadius: 0,
+            fill: false
+          },
+          {
+            label: 'Lower Warning Limit',
+            data: lowerThresholdData,
+            borderColor: 'rgba(239, 68, 68, 0.6)',
+            borderWidth: 1.5,
+            borderDash: [3, 3],
+            pointRadius: 0,
+            fill: false
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            display: false,
+            grid: { display: false }
+          },
+          y: {
+            min: 5,
+            max: 15,
+            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+            ticks: {
+              color: '#9ca3af',
+              font: { family: 'Outfit', size: 12 }
+            }
+          }
+        },
+        plugins: {
+          legend: { display: false }
+        }
+      }
+    });
+
+    // =========================================================================
+    // SYSTEM HELPER FUNCTIONS
+    // =========================================================================
+    function getFormattedTime() {
+      const now = new Date();
+      return now.toTimeString().split(' ')[0];
+    }
+
+    function addLog(message, type = 'info') {
+      const consoleLog = document.getElementById('consoleLog');
+      const logItem = document.createElement('div');
+      logItem.classList.add('log-item');
+
+      let classType = 'log-info';
+      if (type === 'warn') classType = 'log-warn';
+      if (type === 'alert') classType = 'log-alert';
+      if (type === 'success') classType = 'log-success';
+
+      logItem.innerHTML = `<span class="log-time">[${getFormattedTime()}]</span> <span class="${classType}">${message}</span>`;
+      consoleLog.appendChild(logItem);
+      consoleLog.scrollTop = consoleLog.scrollHeight;
+    }
+
+    // Dynamic warning synthesizer sound effects (fully browser synthesized, very premium!)
+    function playAlarmSound() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+
+      // Generate a sharp dual-tone alarm pulse
+      const osc1 = audioCtx.createOscillator();
+      const osc2 = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+
+      osc1.type = 'sawtooth';
+      osc2.type = 'sine';
+
+      osc1.frequency.setValueAtTime(880, audioCtx.currentTime); // A5 note
+      osc1.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.35);
+
+      osc2.frequency.setValueAtTime(885, audioCtx.currentTime);
+      osc2.frequency.exponentialRampToValueAtTime(442, audioCtx.currentTime + 0.35);
+
+      gainNode.gain.setValueAtTime(0.12, audioCtx.currentTime);
+      gainNode.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+
+      osc1.connect(gainNode);
+      osc2.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+
+      osc1.start();
+      osc2.start();
+      osc1.stop(audioCtx.currentTime + 0.45);
+      osc2.stop(audioCtx.currentTime + 0.45);
+    }
+
+    function triggerAlert() {
+      if (isAlerting) return;
+      isAlerting = true;
+
+      // Update UI cards styling
+      const statusCard = document.getElementById('metricStatusCard');
+      const statusVal = document.getElementById('metricStatusVal');
+      const statusSub = document.getElementById('metricStatusSub');
+      const statusIcon = document.getElementById('statusIcon');
+      const logoPulse = document.getElementById('logoPulse');
+      const threatOverlay = document.getElementById('threatOverlay');
+
+      statusCard.className = 'glass-card metric-card state-alert';
+      statusVal.className = 'metric-value text-alert';
+      statusVal.innerText = 'CRITICAL ALERT';
+      statusSub.innerText = 'LANDSLIDE IN PROGRESS';
+      logoPulse.className = 'logo-pulse alert-state';
+      threatOverlay.className = 'threat-overlay active';
+
+      statusIcon.innerHTML = `
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+      `;
+      statusIcon.setAttribute('class', 'text-alert');
+
+      // Loop synth audio beep
+      playAlarmSound();
+      alarmInterval = setInterval(playAlarmSound, 600);
+
+      addLog("🚨 CRITICAL WARNING: Landslide movement detected!", "alert");
+    }
+
+    function clearAlert() {
+      if (!isAlerting) return;
+      isAlerting = false;
+
+      clearInterval(alarmInterval);
+
+      // Restore UI styles
+      const statusCard = document.getElementById('metricStatusCard');
+      const statusVal = document.getElementById('metricStatusVal');
+      const statusSub = document.getElementById('metricStatusSub');
+      const statusIcon = document.getElementById('statusIcon');
+      const logoPulse = document.getElementById('logoPulse');
+      const threatOverlay = document.getElementById('threatOverlay');
+
+      statusCard.className = 'glass-card metric-card state-secure';
+      statusVal.className = 'metric-value text-secure';
+      statusVal.innerText = 'SYSTEM SECURE';
+      statusSub.innerText = 'Monitoring active baseline';
+      logoPulse.className = 'logo-pulse';
+      threatOverlay.className = 'threat-overlay';
+
+      statusIcon.innerHTML = `
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+      `;
+      statusIcon.setAttribute('class', 'text-secure');
+
+      addLog("✅ System alerts subsided. Monitoring resumed.", "success");
+    }
+
+    // Core state updater & stability tracker (simulates identical logic to C++)
+    function updateSensorState(newZVal) {
+      currentZ = parseFloat(newZVal);
+      diffZ = Math.abs(currentZ - baselineZ);
+
+      // Update basic HTML values
+      document.getElementById('metricZVal').innerHTML = `${currentZ.toFixed(4)} <span style="font-size: 1.1rem; color: var(--text-muted);">m/s²</span>`;
+      document.getElementById('metricDiffVal').innerHTML = `${diffZ.toFixed(4)} <span style="font-size: 1.1rem; color: var(--text-muted);">m/s²</span>`;
+      document.getElementById('metricBaselineSub').innerText = `Baseline: ${baselineZ.toFixed(4)} m/s²`;
+
+      // Update progress bar
+      const progressPercent = Math.min((diffZ / landslideThreshold) * 100, 100);
+      const progressBar = document.getElementById('metricProgressBar');
+      progressBar.style.width = `${progressPercent}%`;
+      if (diffZ > landslideThreshold) {
+        progressBar.className = 'progress-fill warning';
+      } else {
+        progressBar.className = 'progress-fill';
+      }
+
+      // Stability Tracking Auto-Recalibration Mechanism
+      const now = Date.now();
+      if (Math.abs(currentZ - stableCandidateZ) > stabilityThreshold) {
+        // Sensor moved from candidate position: reset stability timer
+        stableCandidateZ = currentZ;
+        candidateStartTime = now;
+      } else {
+        // Sensor is stationary at this new candidate position
+        if (now - candidateStartTime > stabilityDuration) {
+          // If stationary for > 3s, automatically update baseline and stop alerts
+          if (Math.abs(baselineZ - stableCandidateZ) > 0.01) {
+            const oldBaseline = baselineZ;
+            baselineZ = stableCandidateZ;
+            diffZ = Math.abs(currentZ - baselineZ); // Recalculate
+
+            addLog(`🔄 Sensor stabilized at new position: ${currentZ.toFixed(4)} m/s² for > 3s. Updating baseline to stop alerts.`, "success");
+            clearAlert();
+
+            // Re-sync slider if simulating
+            if (isSimulating) {
+              document.getElementById('zSlider').value = baselineZ;
+              document.getElementById('sliderVal').innerText = `${baselineZ.toFixed(2)} m/s²`;
+            }
+          }
+        }
+      }
+
+      // Landslide alert triggers
+      if (diffZ > landslideThreshold) {
+        triggerAlert();
+      }
+
+      // Shift chart datasets and push new points
+      telemetryChart.data.datasets[0].data.shift();
+      telemetryChart.data.datasets[0].data.push(currentZ);
+
+      telemetryChart.data.datasets[1].data.shift();
+      telemetryChart.data.datasets[1].data.push(baselineZ);
+
+      telemetryChart.data.datasets[2].data.shift();
+      telemetryChart.data.datasets[2].data.push(baselineZ + landslideThreshold);
+
+      telemetryChart.data.datasets[3].data.shift();
+      telemetryChart.data.datasets[3].data.push(baselineZ - landslideThreshold);
+
+      telemetryChart.update('none'); // silent fast update
+    }
+
+    // =========================================================================
+    // SIMULATOR FUNCTIONALITY
+    // =========================================================================
+    const toggleSimBtn = document.getElementById('toggleSimBtn');
+    const simControls = document.getElementById('simControls');
+    const simPanel = document.getElementById('simPanel');
+    const zSlider = document.getElementById('zSlider');
+    const sliderVal = document.getElementById('sliderVal');
+    const simLandslideBtn = document.getElementById('simLandslideBtn');
+    const simSettleBtn = document.getElementById('simSettleBtn');
+
+    toggleSimBtn.addEventListener('click', () => {
+      isSimulating = !isSimulating;
+
+      if (isSimulating) {
+        // Stop MQTT connection to focus on simulation
+        if (client && client.isConnected()) {
+          client.disconnect();
+        }
+
+        toggleSimBtn.innerHTML = `
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="6" y="4" width="4" height="16" />
+            <rect x="14" y="4" width="4" height="16" />
+          </svg>
+          Deactivate Simulator
+        `;
+        toggleSimBtn.className = "btn btn-secondary";
+        simControls.style.display = "block";
+        simPanel.classList.add('active');
+
+        document.getElementById('statusDot').className = 'status-dot simulating';
+        document.getElementById('statusText').innerText = 'SIMULATOR ACTIVE';
+        addLog("▶️ Showcase Simulator Mode activated.", "warn");
+
+        // Initial setup for candidate tracking
+        stableCandidateZ = currentZ;
+        candidateStartTime = Date.now();
+
+        // High frequency sensor reading updater loop
+        simInterval = setInterval(() => {
+          // Add small high-frequency sensor noise
+          const noise = (Math.random() - 0.5) * 0.015;
+          const targetZVal = parseFloat(zSlider.value) + noise;
+          updateSensorState(targetZVal);
+        }, 100);
+
+      } else {
+        clearInterval(simInterval);
+        clearTimeout(autoStabilizeTimer);
+
+        toggleSimBtn.innerHTML = `
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Activate Simulator
+        `;
+        simControls.style.display = "none";
+        simPanel.classList.remove('active');
+
+        document.getElementById('statusDot').className = 'status-dot';
+        document.getElementById('statusText').innerText = 'DISCONNECTED';
+        addLog("⏹️ Showcase Simulator Mode deactivated.", "info");
+
+        clearAlert();
+      }
+    });
+
+    zSlider.addEventListener('input', () => {
+      sliderVal.innerText = `${parseFloat(zSlider.value).toFixed(2)} m/s²`;
+    });
+
+    simLandslideBtn.addEventListener('click', () => {
+      if (!isSimulating) return;
+      // Trigger a dramatic downward Z-shift (Landslide)
+      zSlider.value = "11.85";
+      sliderVal.innerText = "11.85 m/s²";
+      addLog("⚡ [Simulator] Simulating structural collapse / landslide force (Z = 11.85 m/s²)", "warn");
+    });
+
+    simSettleBtn.addEventListener('click', () => {
+      if (!isSimulating) return;
+      // Instantly brings the slider back to a new resting state (e.g. 10.20 m/s^2)
+      // And holds it there, allowing the 3-second auto-stabilization timer to complete.
+      const newStablePoint = 10.45;
+      zSlider.value = newStablePoint.toString();
+      sliderVal.innerText = `${newStablePoint.toFixed(2)} m/s²`;
+      addLog(`💤 [Simulator] Sensor has settled at new stable position: ${newStablePoint.toFixed(2)} m/s². Initiating baseline stabilization window...`, "info");
+    });
+
+    // =========================================================================
+    // MQTT INTEGRATION
+    // =========================================================================
+    const connectMqttBtn = document.getElementById('connectMqttBtn');
+
+    connectMqttBtn.addEventListener('click', () => {
+      if (isSimulating) {
+        addLog("🔌 Automatically deactivating simulator to connect to live MQTT...", "info");
+        toggleSimBtn.click();
+      }
+
+      if (client && client.isConnected()) {
+        client.disconnect();
+        return;
+      }
+
+      const host = document.getElementById('mqttHost').value.trim();
+      const port = parseInt(document.getElementById('mqttPort').value.trim());
+      const topic = document.getElementById('mqttTopic').value.trim();
+
+      const clientId = "WebLandslideDash-" + Math.random().toString(16).substr(2, 8);
+
+      addLog(`🔌 Connecting to MQTT Broker: ws://${host}:${port}...`, "info");
+      connectMqttBtn.innerText = "Connecting...";
+      connectMqttBtn.disabled = true;
+
+      // Paho MQTT Client
+      client = new Paho.MQTT.Client(host, port, "/mqtt", clientId);
+
+      client.onConnectionLost = (responseObject) => {
+        document.getElementById('statusDot').className = 'status-dot';
+        document.getElementById('statusText').innerText = 'DISCONNECTED';
+        connectMqttBtn.innerText = "Connect Client";
+        connectMqttBtn.disabled = false;
+
+        addLog(`❌ MQTT connection lost. Error: ${responseObject.errorMessage}`, "alert");
+        clearAlert();
+      };
+
+      client.onMessageArrived = (message) => {
+        try {
+          const payload = JSON.parse(message.payloadString);
+
+          if (payload.status === "DATA") {
+            const zVal = parseFloat(payload.level);
+            // Telemetry updates
+            updateSensorState(zVal);
+          } else if (payload.status === "ALERT") {
+            const movementVal = parseFloat(payload.movement);
+            addLog(`🚨 MQTT ALERT RECEIVED: Landslide detected! Movement magnitude: ${movementVal.toFixed(4)} m/s²`, "alert");
+            triggerAlert();
+          }
+        } catch (e) {
+          // If non-JSON text, just log it
+          addLog(`📥 MQTT Msg [${message.destinationName}]: ${message.payloadString}`, "info");
+        }
+      };
+
+      client.connect({
+        onSuccess: () => {
+          document.getElementById('statusDot').className = 'status-dot connected';
+          document.getElementById('statusText').innerText = 'CONNECTED';
+          connectMqttBtn.innerText = "Disconnect";
+          connectMqttBtn.disabled = false;
+
+          addLog(`✅ Connected to MQTT Broker: ${host}!`, "success");
+
+          // Subscribe to target topic
+          client.subscribe(topic);
+          addLog(`📡 Subscribed to topic: "${topic}"`, "info");
+        },
+        onFailure: (err) => {
+          document.getElementById('statusDot').className = 'status-dot';
+          document.getElementById('statusText').innerText = 'DISCONNECTED';
+          connectMqttBtn.innerText = "Connect Client";
+          connectMqttBtn.disabled = false;
+
+          addLog(`❌ MQTT connection failed: ${err.errorMessage} (Check host, port and WebSocket configuration)`, "alert");
+        },
+        keepAliveInterval: 30,
+        timeout: 10
+      });
+    });
+
+  </script>
 </body>
+
 </html>
